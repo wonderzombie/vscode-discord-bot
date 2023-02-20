@@ -1,4 +1,4 @@
-package godiscbot
+package main
 
 import (
 	"fmt"
@@ -12,8 +12,15 @@ import (
 )
 
 func main() {
-	godotenv.Load()
-	tok := os.Getenv("BOT_TOKEN")
+	envVars, err := godotenv.Read()
+	if err != nil {
+		log.Fatalf("failure to load config: %v", err)
+	}
+
+	tok, ok := envVars["BOT_TOKEN"]
+	if !ok || tok == "" {
+		log.Fatalf(".env is missing a required field: BOT_TOKEN")
+	}
 	dg := start(tok)
 
 	fmt.Println("running...")
