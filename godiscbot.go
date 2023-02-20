@@ -17,7 +17,7 @@ func main() {
 		log.Fatalf("failure to load config: %v", err)
 	}
 
-	tok, ok := envVars["BOT_TOKEN"]
+	tok, ok := envVars["DISCORD_TOKEN"]
 	if !ok || tok == "" {
 		log.Fatalf(".env is missing a required field: BOT_TOKEN")
 	}
@@ -36,7 +36,7 @@ func awaitClose() {
 }
 
 func start(tok string) (s *discordgo.Session) {
-	dg, err := discordgo.New(tok)
+	dg, err := discordgo.New("Bot " + tok)
 	if err != nil {
 		log.Fatalf("failure to launch: %v", err)
 	}
@@ -52,6 +52,7 @@ func start(tok string) (s *discordgo.Session) {
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// Add some logging here to check what's what
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
