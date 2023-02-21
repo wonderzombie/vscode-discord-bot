@@ -9,6 +9,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
+	_ "github.com/wonderzombie/youandmeandirc"
 )
 
 func main() {
@@ -42,7 +43,7 @@ func start(tok string) (s *discordgo.Session) {
 	}
 
 	dg.AddHandler(messageCreate)
-	dg.Identify.Intents = discordgo.IntentsGuildMessages
+	dg.Identify.Intents = discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages
 
 	err = dg.Open()
 	if err != nil {
@@ -52,6 +53,7 @@ func start(tok string) (s *discordgo.Session) {
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+	fmt.Printf("messageCreate: %s - %s - %s\n", m.Timestamp, m.Author, m.Content)
 	// Add some logging here to check what's what
 	if m.Author.ID == s.State.User.ID {
 		return
