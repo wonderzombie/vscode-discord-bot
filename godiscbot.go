@@ -9,7 +9,6 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
-	_ "github.com/wonderzombie/youandmeandirc"
 )
 
 func main() {
