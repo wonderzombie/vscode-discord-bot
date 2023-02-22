@@ -5,10 +5,18 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
+)
+
+var (
+	names      = make(map[string]time.Time)
+	botName    = ""
+	botIntents = discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages | discordgo.IntentGuildMessageReactions | discordgo.IntentDirectMessageReactions
 )
 
 func main() {
@@ -35,28 +43,47 @@ func awaitClose() {
 	<-sc
 }
 
-func start(tok string) (s *discordgo.Session) {
+func start(tok string) *discordgo.Session {
 	dg, err := discordgo.New("Bot " + tok)
 	if err != nil {
 		log.Fatalf("failure to launch: %v", err)
 	}
 
 	dg.AddHandler(messageCreate)
-	dg.Identify.Intents = discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages
+	dg.AddHandlerOnce(ready)
+	dg.Identify.Intents = botIntents
 
 	err = dg.Open()
 	if err != nil {
 		log.Fatalf("failure to connect: %v", err)
 	}
-	return s
+
+	return dg
+}
+
+func ready(s *discordgo.Session, m *discordgo.Ready) {
+	botName = m.User.Username
+	log.Printf("ready: using name %s", botName)
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	fmt.Printf("messageCreate: %s - %s - %s\n", m.Timestamp, m.Author, m.Content)
-	// Add some logging here to check what's what
-	if m.Author.ID == s.State.User.ID {
+	if m.Author.ID == s.State.User.ID || m.Author.ID == "" {
 		return
 	}
+
+	// Add some logging here to check what's what
+	log.Printf("messageCreate: %s - %s - %s\n", m.Timestamp, m.Author, m.Content)
+	if _, ok := names[m.Author.ID]; !ok {
+		names[m.Author.ID] = m.Timestamp
+		fmt.Printf("added name %s to registry", m.Author.ID)
+	}
+
+	if mentioned := strings.Contains(m.Content, botName); mentioned {
+		content := fmt.Sprintf("where is %s, where is %s", botName, botName)
+		s.ChannelMessageSend(m.ChannelID, content)
+		return
+	}
+
 	if m.Content == "!ping" {
 		s.ChannelMessageSend(m.ChannelID, "PONG")
 	} else if m.Content == "!pong" {
