@@ -36,7 +36,8 @@ func (cm *combatMap) init(k string) *combatant {
 	return cm.m[k]
 }
 
-type resolver func(string, *combatant) []string
+// https://go.dev/play/p/3R5wtH9yOMo
+type resolver func(*combatMap, string, *combatant) []string
 
 var tracker = combatMap{}
 
@@ -48,7 +49,7 @@ func Combat(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	cmd, targetName := msgParts[0], msgParts[1]
 	target := tracker.get(targetName)
-	out := resolve(cmd, m.Author.Username, target)
+	out := tracker.resolve(cmd, m.Author.Username, target)
 
 	if len(out) == 0 {
 		return
@@ -62,27 +63,27 @@ func Combat(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func resolve(cmd string, author string, target *combatant) (out []string) {
+func (cm *combatMap) resolve(cmd string, author string, target *combatant) (out []string) {
 	// TODO: change to a switch stmt
-	var fn resolver = resolveNoop
+	var fn resolver = (*combatMap).resolveNoop
 
 	switch cmd := strings.Trim(cmd, "\n! "); cmd {
 	case "heal", "heals", "bless", "cure", "aid":
-		fn = resolveHeal
+		fn = (*combatMap).resolveHeal
 	case "res", "resurrect":
-		fn = resolveRes
+		fn = (*combatMap).resolveRes
 	case "attack", "hit", "stab", "bite", "curse":
-		fn = resolveAttack
+		fn = (*combatMap).resolveAttack
 	}
 
-	return fn(author, target)
+	return fn(cm, author, target)
 }
 
-func resolveNoop(unused1 string, unused2 *combatant) (empty []string) {
+func (cm *combatMap) resolveNoop(unused1 string, unused2 *combatant) (empty []string) {
 	return empty
 }
 
-func resolveHeal(author string, target *combatant) []string {
+func (cm *combatMap) resolveHeal(author string, target *combatant) []string {
 	outMsg := ""
 	if target.hp > defaultHp {
 		outMsg = fmt.Sprintf("%s already has %d hp!", target.name, target.hp)
@@ -94,7 +95,7 @@ func resolveHeal(author string, target *combatant) []string {
 	return []string{outMsg}
 }
 
-func resolveRes(author string, target *combatant) []string {
+func (cm *combatMap) resolveRes(author string, target *combatant) []string {
 	var outMsg string
 	if target.hp > 0 {
 		outMsg = fmt.Sprintf("%s is still alive, with %d hp.", target.name, target.hp)
@@ -106,7 +107,7 @@ func resolveRes(author string, target *combatant) []string {
 	return []string{outMsg}
 }
 
-func resolveAttack(author string, target *combatant) (out []string) {
+func (cm *combatMap) resolveAttack(author string, target *combatant) (out []string) {
 	// can't attack dead people
 	if target.hp <= 0 {
 		out = []string{fmt.Sprintf("%s is already dead!", target.name)}
