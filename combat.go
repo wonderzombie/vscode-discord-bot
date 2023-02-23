@@ -36,15 +36,9 @@ func (cm *combatMap) init(k string) *combatant {
 	return cm.m[k]
 }
 
+type resolver func(string, *combatant) []string
+
 var tracker = combatMap{}
-
-var combatVerbs = map[string]bool{
-	"!attack": true,
-	// "!heal":   true,
-	// "!res":    true,
-}
-
-type resolver func(string, string, *combatant) []string
 
 func Combat(s *discordgo.Session, m *discordgo.MessageCreate) {
 	msgParts := strings.Fields(m.Content)
@@ -53,10 +47,6 @@ func Combat(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	cmd, targetName := msgParts[0], msgParts[1]
-	if !combatVerbs[cmd] {
-		return
-	}
-
 	target := tracker.get(targetName)
 	out := resolve(cmd, m.Author.Username, target)
 
@@ -72,12 +62,51 @@ func Combat(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func resolveAttack(cmd string, author string, target *combatant) (out []string) {
+func resolve(cmd string, author string, target *combatant) (out []string) {
 	// TODO: change to a switch stmt
-	if !strings.HasSuffix(cmd, "attack") {
-		return
+	var fn resolver = resolveNoop
+
+	switch cmd := strings.Trim(cmd, "\n! "); cmd {
+	case "heal", "heals", "bless", "cure", "aid":
+		fn = resolveHeal
+	case "res", "resurrect":
+		fn = resolveRes
+	case "attack", "hit", "stab", "bite", "curse":
+		fn = resolveAttack
 	}
 
+	return fn(author, target)
+}
+
+func resolveNoop(unused1 string, unused2 *combatant) (empty []string) {
+	return empty
+}
+
+func resolveHeal(author string, target *combatant) []string {
+	outMsg := ""
+	if target.hp > defaultHp {
+		outMsg = fmt.Sprintf("%s already has %d hp!", target.name, target.hp)
+	} else {
+		healed := rand.Int() % 8
+		target.hp += healed
+		outMsg = fmt.Sprintf("%s healed %s for %d hp!", author, target.name, target.hp)
+	}
+	return []string{outMsg}
+}
+
+func resolveRes(author string, target *combatant) []string {
+	var outMsg string
+	if target.hp > 0 {
+		outMsg = fmt.Sprintf("%s is still alive, with %d hp.", target.name, target.hp)
+		return []string{outMsg}
+	}
+
+	target.hp = defaultHp
+	outMsg = fmt.Sprintf("%s brings %s back from beyond the grave!", author, target.name)
+	return []string{outMsg}
+}
+
+func resolveAttack(author string, target *combatant) (out []string) {
 	// can't attack dead people
 	if target.hp <= 0 {
 		out = []string{fmt.Sprintf("%s is already dead!", target.name)}
@@ -103,60 +132,4 @@ func resolveAttack(cmd string, author string, target *combatant) (out []string) 
 
 	return out
 
-}
-
-func resolve(cmd string, author string, target *combatant) (out []string) {
-	// TODO: change to a switch stmt
-	var fn resolver = resolveNoop
-	if strings.HasSuffix(cmd, "attack") {
-		fn = resolveAttack
-	}
-
-	switch cmd {
-	case "!heal":
-		fn = resolveHeal
-	case "!res", "!resurrect":
-		fn = resolveRes
-	case "!attack", "!hit":
-		fn = resolveAttack
-	}
-
-	return fn(cmd, author, target)
-}
-
-func resolveNoop(unused1 string, unused2 string, unused3 *combatant) (empty []string) {
-	return empty
-}
-
-func resolveHeal(cmd string, author string, target *combatant) []string {
-	// TODO: change to a switch stmt
-	if !strings.HasSuffix(cmd, "heal") {
-		return []string{}
-	}
-	outMsg := ""
-
-	if target.hp > defaultHp {
-		outMsg = fmt.Sprintf("%s already has %d hp!", target.name, target.hp)
-	} else {
-		healed := rand.Int() % 8
-		target.hp += healed
-		outMsg = fmt.Sprintf("%s healed %s for %d hp!", author, target.name, target.hp)
-	}
-	return []string{outMsg}
-}
-
-func resolveRes(cmd string, author string, target *combatant) []string {
-	if !strings.HasSuffix(cmd, "res") || !strings.HasSuffix(cmd, "resurrect") {
-		return []string{}
-	}
-
-	var outMsg string
-	if target.hp > 0 {
-		outMsg = fmt.Sprintf("%s is still alive, with %d hp.", target.name, target.hp)
-		return []string{outMsg}
-	}
-
-	target.hp = defaultHp
-	outMsg = fmt.Sprintf("%s brings %s back from beyond the grave!", author, target.name)
-	return []string{outMsg}
 }
