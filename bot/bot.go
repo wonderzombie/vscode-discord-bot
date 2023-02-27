@@ -1,4 +1,4 @@
-package main
+package bot
 
 import (
 	"fmt"
@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/wonderzombie/godiscbot/combat"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -15,16 +17,40 @@ type MessageHandler func(*discordgo.Session, *discordgo.MessageCreate)
 var (
 	seenList   = make(map[string]time.Time)
 	seenListMx = sync.Mutex{}
-	sent       = make([]*discordgo.Message, 20)
+	sentList   = make([]*discordgo.Message, 20)
 
-	BotHandlers = []MessageHandler{
-		Seeing,
-		HasSeen,
-		Sent,
+	botName = ""
+
+	Handlers = []MessageHandler{
+		pong,
+		seeing,
+		hasSeen,
+		sent,
+		combat.Handler,
 	}
 )
 
-func Pong(s *discordgo.Session, m *discordgo.MessageCreate) {
+func AddMessageHandlers(dg *discordgo.Session) {
+	dg.AddHandlerOnce(ready)
+	for _, h := range Handlers {
+		dg.AddHandler(skipSelf(h))
+	}
+}
+
+func ready(s *discordgo.Session, m *discordgo.Ready) {
+	botName = m.User.Username
+	log.Printf("ready: using name %s", botName)
+}
+
+func skipSelf(fn MessageHandler) MessageHandler {
+	return func(s *discordgo.Session, m *discordgo.MessageCreate) {
+		if m.Author != s.State.User {
+			fn(s, m)
+		}
+	}
+}
+
+func pong(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Content == "!ping" {
 		s.ChannelMessageSend(m.ChannelID, "PONG")
 	} else if m.Content == "!pong" {
@@ -32,7 +58,8 @@ func Pong(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func Seeing(s *discordgo.Session, m *discordgo.MessageCreate) {
+// TODO: something like a list. Maybe confined to an allow list of channels in .env or similar.
+func seeing(s *discordgo.Session, m *discordgo.MessageCreate) {
 	seenListMx.Lock()
 	defer seenListMx.Unlock()
 	if _, ok := seenList[m.Author.Username]; !ok {
@@ -40,7 +67,7 @@ func Seeing(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func HasSeen(s *discordgo.Session, m *discordgo.MessageCreate) {
+func hasSeen(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if !strings.HasPrefix(m.Content, "!seen") {
 		return
 	}
@@ -48,7 +75,7 @@ func HasSeen(s *discordgo.Session, m *discordgo.MessageCreate) {
 	seenListMx.Lock()
 	defer seenListMx.Unlock()
 
-	out := handleSeen(m)
+	out := seenResponse(m)
 	if out == "" {
 		return
 	}
@@ -58,10 +85,10 @@ func HasSeen(s *discordgo.Session, m *discordgo.MessageCreate) {
 		log.Printf("error sending message: %v\ncontent was: %s", err, out)
 		return
 	}
-	sent = append(sent, msg)
+	sentList = append(sentList, msg)
 }
 
-func handleSeen(m *discordgo.MessageCreate) string {
+func seenResponse(m *discordgo.MessageCreate) string {
 	var out string
 	words := strings.Fields(m.Content)
 	if len(words) == 1 {
@@ -77,12 +104,12 @@ func handleSeen(m *discordgo.MessageCreate) string {
 	return out
 }
 
-func Sent(s *discordgo.Session, m *discordgo.MessageCreate) {
+func sent(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if !strings.HasPrefix(m.Content, "!sent") {
 		return
 	}
 
-	if len(sent) == 0 {
+	if len(sentList) == 0 {
 		s.ChannelMessageSend(m.ChannelID, "i ... haven't seen anyone")
 		return
 	}
@@ -90,7 +117,7 @@ func Sent(s *discordgo.Session, m *discordgo.MessageCreate) {
 	var buf strings.Builder
 
 	buf.WriteString("I sent these:\n")
-	for i, msg := range sent {
+	for i, msg := range sentList {
 		out := fmt.Sprintf("%d %s %s %s\n", i, msg.ChannelID, msg.Timestamp, msg.Content)
 		buf.WriteString(out)
 	}

@@ -9,10 +9,10 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
+	"github.com/wonderzombie/godiscbot/bot"
 )
 
 var (
-	botName    = ""
 	botIntents = discordgo.IntentsGuildMessages | discordgo.IntentsDirectMessages | discordgo.IntentGuildMessageReactions | discordgo.IntentDirectMessageReactions
 )
 
@@ -27,14 +27,13 @@ func main() {
 		log.Fatalf(".env is missing a required field: BOT_TOKEN")
 	}
 	dg := start(tok)
+	defer dg.Close()
 
 	fmt.Println("running...")
-
-	awaitClose()
-	dg.Close()
+	awaitTerm()
 }
 
-func awaitClose() {
+func awaitTerm() {
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
@@ -46,34 +45,12 @@ func start(tok string) *discordgo.Session {
 		log.Fatalf("failure to launch: %v", err)
 	}
 
-	dg.AddHandlerOnce(ready)
-
-	addMessageHandlers(dg, BotHandlers)
+	bot.AddMessageHandlers(dg)
 	dg.Identify.Intents = botIntents
 
 	err = dg.Open()
 	if err != nil {
 		log.Fatalf("failure to connect: %v", err)
 	}
-
 	return dg
-}
-
-func addMessageHandlers(dg *discordgo.Session, handlers []MessageHandler) {
-	for _, h := range handlers {
-		dg.AddHandler(skipSelf(h))
-	}
-}
-
-func skipSelf(fn MessageHandler) MessageHandler {
-	return func(s *discordgo.Session, m *discordgo.MessageCreate) {
-		if m.Author != s.State.User {
-			fn(s, m)
-		}
-	}
-}
-
-func ready(s *discordgo.Session, m *discordgo.Ready) {
-	botName = m.User.Username
-	log.Printf("ready: using name %s", botName)
 }

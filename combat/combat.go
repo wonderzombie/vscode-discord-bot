@@ -73,7 +73,7 @@ var (
 	sent    []*discordgo.Message
 )
 
-func Combat(s *discordgo.Session, m *discordgo.MessageCreate) {
+func Handler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	msgParts := strings.Fields(m.Content)
 	if len(msgParts) < 2 {
 		return
