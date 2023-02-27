@@ -1,4 +1,4 @@
-package main
+package combat
 
 import (
 	"fmt"
@@ -30,15 +30,17 @@ func (c *combatant) restore() {
 }
 
 type combatMap struct {
-	m     map[string]*combatant
-	roll  func(int) int
-	nRoll func(int, int) int
+	m         map[string]*combatant
+	defaultHp int
+	roll      func(int) int
+	nRoll     func(int, int) int
 }
 
-func newCombatMap(roller func(int) int) *combatMap {
+func newCombatMap(defaultHp int, roller func(int) int) *combatMap {
 	return &combatMap{
-		m:    make(map[string]*combatant),
-		roll: roller,
+		m:         make(map[string]*combatant),
+		defaultHp: defaultHp,
+		roll:      roller,
 		nRoll: func(q int, n int) int {
 			t := 0
 			for i := 0; i < q; i++ {
@@ -66,7 +68,10 @@ func (cm *combatMap) init(k string) *combatant {
 	return cm.m[k]
 }
 
-var tracker *combatMap = newCombatMap(randInt)
+var (
+	tracker *combatMap = newCombatMap(defaultHp, randInt)
+	sent    []*discordgo.Message
+)
 
 func Combat(s *discordgo.Session, m *discordgo.MessageCreate) {
 	msgParts := strings.Fields(m.Content)

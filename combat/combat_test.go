@@ -1,4 +1,4 @@
-package main
+package combat
 
 import (
 	"fmt"
@@ -137,6 +137,10 @@ func rollMax(n int) int {
 
 func nRollMax(q int, n int) int {
 	return n * q
+}
+
+func Test_combatMap_resolveAttack(t *testing.T) {
+
 }
 
 func Test_combatMap_resolveHeal(t *testing.T) {
