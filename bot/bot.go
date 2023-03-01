@@ -18,17 +18,19 @@ var (
 )
 
 type Bot struct {
-	Session *discordgo.Session
+	Session Sesh
 }
 
-func New(dg *discordgo.Session) *Bot {
+type Sesh interface {
+	AddHandler(interface{}) func()
+	AddHandlerOnce(interface{}) func()
+}
+
+func New(s Sesh) *Bot {
 	b := &Bot{
-		Session: dg,
+		Session: s,
 	}
-
-	b.addHandlers(botHandlers)
-	b.Session.AddHandlerOnce(Ready)
-
+	initHandlers(s)
 	return b
 }
 
@@ -38,13 +40,11 @@ func (b *Bot) Run() {
 	fmt.Println("quitting")
 }
 
-func (b *Bot) addHandlers(msgHandlers []MessageHandler) {
+func initHandlers(s Sesh) {
 	for _, h := range botHandlers {
-		b.Session.AddHandler(h)
+		s.AddHandler(skipSelf(h))
 	}
-	for _, mh := range msgHandlers {
-		b.Session.AddHandler(skipSelf(mh))
-	}
+	s.AddHandlerOnce(Ready)
 }
 
 func (b *Bot) awaitTerm() {
@@ -53,22 +53,15 @@ func (b *Bot) awaitTerm() {
 	<-sc
 }
 
-func AddMessageHandlers(dg *discordgo.Session) {
-	dg.AddHandlerOnce(Ready)
-	for _, h := range botHandlers {
-		dg.AddHandler(skipSelf(h))
-	}
-}
-
 func Ready(s *discordgo.Session, m *discordgo.Ready) {
 	botName = m.User.Username
 	log.Printf("ready: using name %s", botName)
 }
 
-func skipSelf(fn MessageHandler) MessageHandler {
+func skipSelf(mh MessageHandler) MessageHandler {
 	return func(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if m.Author != s.State.User {
-			fn(s, m)
+			mh(s, m)
 		}
 	}
 }
