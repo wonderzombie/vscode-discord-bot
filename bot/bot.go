@@ -13,56 +13,38 @@ import (
 // MessageHandler describes a single function which can act as a handler in discordgo.
 type MessageHandler func(*discordgo.Session, *discordgo.MessageCreate)
 
-var (
-	botName = ""
-)
-
+// Bot is a glorified container for a discordgo Session.
 type Bot struct {
-	Session *discordgo.Session
+	Session  *discordgo.Session
+	Username string
 }
 
-func New(dg *discordgo.Session) *Bot {
-	b := &Bot{
-		Session: dg,
-	}
-
-	b.addHandlers(botHandlers)
-	b.Session.AddHandlerOnce(Ready)
-
-	return b
-}
-
+// Run is meant to block the main thread while the discordgo API manages handlers.
 func (b *Bot) Run() {
 	fmt.Println("running")
-	b.awaitTerm()
-	fmt.Println("quitting")
-}
-
-func (b *Bot) addHandlers(msgHandlers []MessageHandler) {
-	for _, h := range botHandlers {
-		b.Session.AddHandler(h)
-	}
-	for _, mh := range msgHandlers {
-		b.Session.AddHandler(skipSelf(mh))
-	}
-}
-
-func (b *Bot) awaitTerm() {
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
+	fmt.Println("quitting")
 }
 
-func AddMessageHandlers(dg *discordgo.Session) {
-	dg.AddHandlerOnce(Ready)
+func New(s *discordgo.Session) *Bot {
+	initHandlers(s)
+	return &Bot{
+		Session:  s,
+		Username: s.State.User.Username,
+	}
+}
+
+func initHandlers(s *discordgo.Session) {
+	s.AddHandlerOnce(Ready)
 	for _, h := range botHandlers {
-		dg.AddHandler(skipSelf(h))
+		s.AddHandler(skipSelf(h))
 	}
 }
 
 func Ready(s *discordgo.Session, m *discordgo.Ready) {
-	botName = m.User.Username
-	log.Printf("ready: using name %s", botName)
+	log.Printf("ready: using name %s", s.State.User.Username)
 }
 
 func skipSelf(fn MessageHandler) MessageHandler {
