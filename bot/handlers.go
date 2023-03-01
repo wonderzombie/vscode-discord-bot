@@ -31,6 +31,45 @@ func pong(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
+func Seen(s *discordgo.Session, m *discordgo.MessageCreate) {
+	seenListMx.Lock()
+	defer seenListMx.Unlock()
+
+	if _, ok := seenList[m.Author.ID]; !ok {
+		seenList[m.Author.ID] = time.Now()
+	}
+
+	fields := strings.Fields(m.Content)
+
+	var out []string
+
+	switch l := len(fields); l {
+	case 1:
+		out = seenUsers()
+	case 2:
+		out = seenWho(m)
+	}
+
+	if len(out) == 0 {
+		return
+	}
+
+	msg, err := s.ChannelMessageSend(m.ChannelID, strings.Join(out, "\n"))
+	if err != nil {
+		log.Printf("error sending message: %v\ncontent was: %s", err, out)
+		return
+	}
+	sentList = append(sentList, msg)
+}
+
+func seenWho(m *discordgo.MessageCreate) []string {
+	return []string{}
+}
+
+func seenUsers() []string {
+	return []string{}
+}
+
 // TODO: something like a list. Maybe confined to an allow list of channels in .env or similar.
 func seeing(s *discordgo.Session, m *discordgo.MessageCreate) {
 	seenListMx.Lock()
