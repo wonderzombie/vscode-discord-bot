@@ -1,11 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
@@ -26,31 +22,24 @@ func main() {
 	if !ok || tok == "" {
 		log.Fatalf(".env is missing a required field: BOT_TOKEN")
 	}
-	dg := start(tok)
-	defer dg.Close()
+	session := start(tok)
+	defer session.Close()
 
-	fmt.Println("running...")
-	awaitTerm()
-}
-
-func awaitTerm() {
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	<-sc
+	bot.New(session).Run()
 }
 
 func start(tok string) *discordgo.Session {
-	dg, err := discordgo.New("Bot " + tok)
+	session, err := discordgo.New("Bot " + tok)
 	if err != nil {
 		log.Fatalf("failure to launch: %v", err)
 	}
 
-	bot.AddMessageHandlers(dg)
-	dg.Identify.Intents = botIntents
+	session.Identify.Intents = botIntents
 
-	err = dg.Open()
+	err = session.Open()
 	if err != nil {
 		log.Fatalf("failure to connect: %v", err)
 	}
-	return dg
+
+	return session
 }

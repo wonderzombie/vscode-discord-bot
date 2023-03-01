@@ -10,6 +10,19 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+var (
+	seenList   map[string]time.Time
+	seenListMx sync.Mutex
+	sentList   []*discordgo.Message
+
+	botHandlers = []MessageHandler{
+		pong,
+		seeing,
+		hasSeen,
+		sent,
+	}
+)
+
 func pong(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Content == "!ping" {
 		s.ChannelMessageSend(m.ChannelID, "PONG")
@@ -17,19 +30,6 @@ func pong(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSend(m.ChannelID, "PING")
 	}
 }
-
-var (
-	seenList   map[string]time.Time
-	seenListMx sync.Mutex
-	sentList   []*discordgo.Message
-
-	Handlers = []MessageHandler{
-		pong,
-		seeing,
-		hasSeen,
-		sent,
-	}
-)
 
 // TODO: something like a list. Maybe confined to an allow list of channels in .env or similar.
 func seeing(s *discordgo.Session, m *discordgo.MessageCreate) {
