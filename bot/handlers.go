@@ -27,7 +27,7 @@ type seenTimes map[string]time.Time
 
 func (st seenTimes) String() string {
 	if len(st) == 0 {
-		return ""
+		return "NOBODY"
 	}
 
 	var buf strings.Builder
@@ -37,15 +37,15 @@ func (st seenTimes) String() string {
 	return buf.String()
 }
 
-type SeenState struct {
+type seenState struct {
 	user *discordgo.User
 	seen seenTimes
 	mx   sync.Mutex
 	sent []*discordgo.Message
 }
 
-func NewSeen() *SeenState {
-	return &SeenState{
+func newSeen() *seenState {
+	return &seenState{
 		seen: make(seenTimes),
 		mx:   sync.Mutex{},
 		sent: []*discordgo.Message{},
@@ -53,14 +53,14 @@ func NewSeen() *SeenState {
 	}
 }
 
-func (ss *SeenState) addSent(out *discordgo.Message) {
+func (ss *seenState) addSent(out *discordgo.Message) {
 	ss.sent = append(ss.sent, out)
 }
 
-var currentState *SeenState
+var currentState *seenState
 
 func initSeen() {
-	currentState = NewSeen()
+	currentState = newSeen()
 }
 
 // initOnce is an experiment. init() is called before main, but in tests, there's no main per se. To ensure that
@@ -71,7 +71,10 @@ func init() {
 	initOnce.Do(initSeen)
 }
 
+// Seen generates and sends a response using currentState, a SeenState type.
 func Seen(s *discordgo.Session, m *discordgo.MessageCreate) {
+	initOnce.Do(initSeen)
+
 	var responder MessageResponder
 
 	fields := strings.Fields(m.Content)
@@ -79,18 +82,15 @@ func Seen(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	// experimenting with this pattern
 	switch cmd := fields[0]; cmd {
 	case "!ping":
 		responder = pong
 	case "!seen":
-		responder = seen
+		responder = seenResp
 	}
 
 	responses := responder(m)
-	if len(responses) == 0 {
-		return
-	}
-
 	for _, resp := range responses {
 		m, err := s.ChannelMessageSend(m.ChannelID, resp)
 		if err != nil {
@@ -110,7 +110,7 @@ func pong(m *discordgo.MessageCreate) []string {
 	return []string{out}
 }
 
-func seen(m *discordgo.MessageCreate) []string {
+func seenResp(m *discordgo.MessageCreate) []string {
 	lines := []string{}
 	if !strings.HasPrefix(m.Content, "!seen") {
 		return lines
@@ -122,7 +122,7 @@ func seen(m *discordgo.MessageCreate) []string {
 	fields := strings.Fields(m.Content)
 	var response string
 	if len(fields) == 1 {
-		response = fmt.Sprintf("%q", currentState.seen)
+		response = currentState.seen.String()
 	} else if len(fields) == 2 {
 		username := fields[1]
 		if t, ok := currentState.seen[username]; ok {

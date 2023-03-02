@@ -61,7 +61,7 @@ func Ready(s *discordgo.Session, m *discordgo.Ready) {
 	log.Printf("ready: using name %s", s.State.User.Username)
 }
 
-func (ss *SeenState) skipSelf(username string, fn MessageResponder) MessageResponder {
+func (ss *seenState) skipSelf(username string, fn MessageResponder) MessageResponder {
 	return func(m *discordgo.MessageCreate) []string {
 		ret := make([]string, 0)
 		if m.Author.Username != ss.user.Username {
