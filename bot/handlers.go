@@ -10,19 +10,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var (
-	handlers = []MessageHandler{
-		seeing,
-	}
-
-	readiers = []ReadyHandler{}
-
-	responders = []MessageResponder{
-		pong,
-		sent,
-	}
-)
-
 type seenTimes map[string]time.Time
 
 func (st seenTimes) String() string {
@@ -38,7 +25,7 @@ func (st seenTimes) String() string {
 }
 
 type seenState struct {
-	user *discordgo.User
+	// user *discordgo.User
 	seen seenTimes
 	mx   sync.Mutex
 	sent []*discordgo.Message

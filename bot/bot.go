@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
@@ -17,9 +18,63 @@ type MessageHandler func(*discordgo.MessageCreate)
 type MessageResponder func(*discordgo.MessageCreate) []string
 
 // DiscordBot is a glorified container for a discordgo Session.
+type Message struct {
+	Author    string
+	ChannelID string
+	Content   string
+	fields    []string
+}
+
+func (m *Message) Cmd() (string, bool) {
+	if f := m.fields[0]; strings.HasPrefix(f, "!") {
+		return f, true
+	}
+	return "", false
+}
+
+func NewMessage(m *discordgo.MessageCreate) *Message {
+	fields := strings.Fields(m.Content)
+	return &Message{
+		Author:    m.Author.String(),
+		ChannelID: m.ChannelID,
+		Content:   m.Content,
+		fields:    fields,
+	}
+}
+
+type Response struct {
+	HasOut bool
+	Out    []string
+	Final  bool
+}
+
+type Handler interface {
+	Handle(m *Message) Response
+}
+
+type BotModule struct{}
+
+func (m *BotModule) Handle(msg *Message) Response {
+	return Response{false, []string{}, false}
+}
+
 type DiscordBot struct {
 	s    *discordgo.Session
 	User *discordgo.User
+	mods []*BotModule
+	sent []*discordgo.Message
+}
+
+func New(s *discordgo.Session, modules ...Handler) *DiscordBot {
+	b := &DiscordBot{
+		s:    s,
+		User: s.State.User,
+	}
+
+	s.AddHandlerOnce(Ready)
+	s.AddHandler(b.main)
+
+	return b
 }
 
 // Run is meant to block the main thread while the discordgo API manages handlers.
@@ -31,44 +86,38 @@ func (b *DiscordBot) Run() {
 	fmt.Println("quitting")
 }
 
-func New(s *discordgo.Session) *DiscordBot {
-	initHandlers(s)
+func (b *DiscordBot) main(s *discordgo.Session, m *discordgo.MessageCreate) {
+	if s.State.User.String() == m.Author.String() {
+		return
+	}
 
-	return &DiscordBot{
-		s:    s,
-		User: s.State.User,
+	var out []string
+	msg := NewMessage(m)
+	for _, module := range b.mods {
+		resp := module.Handle(msg)
+		if resp.HasOut {
+			out = resp.Out
+		}
+		if resp.Final {
+			break
+		}
+	}
+
+	for _, o := range out {
+		myMsg, err := s.ChannelMessageSend(msg.ChannelID, o)
+		if err != nil {
+			fmt.Println("unable to send message:", err, "\nMessage follows: [", o, "]")
+		}
+		b.add(myMsg)
 	}
 }
 
-func initHandlers(s *discordgo.Session) {
-	s.AddHandlerOnce(Ready)
-
-	for _, rd := range readiers {
-		s.AddHandlerOnce(rd)
-	}
-
-	for _, rs := range responders {
-
-		s.AddHandler(rs)
-	}
-
-	for _, h := range handlers {
-		s.AddHandler(h)
-	}
+func (b *DiscordBot) add(m *discordgo.Message) {
+	b.sent = append(b.sent, m)
 }
 
 func Ready(s *discordgo.Session, m *discordgo.Ready) {
 	log.Printf("ready: using name %s", s.State.User.Username)
-}
-
-func (ss *seenState) skipSelf(username string, fn MessageResponder) MessageResponder {
-	return func(m *discordgo.MessageCreate) []string {
-		ret := make([]string, 0)
-		if m.Author.Username != ss.user.Username {
-			ret = fn(m)
-		}
-		return ret
-	}
 }
 
 func empty(lines []string) bool {
