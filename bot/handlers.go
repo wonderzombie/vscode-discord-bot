@@ -124,28 +124,3 @@ func seenResp(m *discordgo.MessageCreate) []string {
 	}
 	return lines
 }
-
-// TODO: something like a list. Maybe confined to an allow list of channels in .env or similar.
-func seeing(m *discordgo.MessageCreate) {
-	currentState.mx.Lock()
-	defer currentState.mx.Unlock()
-	if _, ok := currentState.seen[m.Author.Username]; !ok {
-		currentState.seen[m.Author.Username] = m.Timestamp
-	}
-}
-
-func sent(m *discordgo.MessageCreate) []string {
-	lines := []string{}
-	if !strings.HasPrefix(m.Content, "!sent") || len(currentState.sent) == 0 {
-		return lines
-	}
-
-	var buf strings.Builder
-	buf.WriteString("I sent these:\n")
-	for i, msg := range currentState.sent {
-		out := fmt.Sprintf("%d %s %s %s\n", i, msg.ChannelID, msg.Timestamp, msg.Content)
-		buf.WriteString(out)
-	}
-	lines = append(lines, buf.String())
-	return lines
-}

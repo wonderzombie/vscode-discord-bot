@@ -104,16 +104,17 @@ func (b *DiscordBot) main(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	for _, o := range out {
-		myMsg, err := s.ChannelMessageSend(msg.ChannelID, o)
-		if err != nil {
-			fmt.Println("unable to send message:", err, "\nMessage follows: [", o, "]")
-		}
-		b.add(myMsg)
+		b.sendMessage(m.ChannelID, o)
 	}
 }
 
-func (b *DiscordBot) add(m *discordgo.Message) {
-	b.sent = append(b.sent, m)
+func (b *DiscordBot) sendMessage(channelID string, o string) {
+	msg, err := b.s.ChannelMessageSend(channelID, o)
+	if err != nil {
+		fmt.Println("unable to send message:", err, "\nMessage follows: [", o, "]")
+	} else {
+		b.sent = append(b.sent, msg)
+	}
 }
 
 func Ready(s *discordgo.Session, m *discordgo.Ready) {
