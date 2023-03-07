@@ -26,27 +26,46 @@ func Test_pong(t *testing.T) {
 	type args struct {
 		m *discordgo.MessageCreate
 	}
+	type ret struct {
+		wantStr   []string
+		wantFired bool
+	}
 	tests := []struct {
 		name string
 		args args
-		want []string
+		ret  ret
 	}{
 		{
 			// TODO: Add test cases.
 			name: "testing ping",
 			args: args{m: message("foo", "1111", "!ping")},
-			want: []string{"PONG"},
+
+			ret: ret{
+				wantStr:   []string{"PONG"},
+				wantFired: true,
+			},
 		},
 		{
 			name: "testing pong",
 			args: args{m: message("foo", "1111", "!pong")},
-			want: []string{"PING"},
+			ret: ret{
+				wantStr:   []string{"PING"},
+				wantFired: true,
+			},
+		},
+		{
+			name: "testing neither",
+			args: args{m: message("foo", "1111", "!bees")},
+			ret: ret{
+				wantStr:   []string{""},
+				wantFired: false,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := pong(tt.args.m); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("pong() = %v, want %v", got, tt.want)
+			if gotFired, gotStr := pong(tt.args.m); !reflect.DeepEqual(gotStr, tt.ret.wantStr) || gotFired != tt.ret.wantFired {
+				t.Errorf("pong() = %v, %v; want %v, %v", gotFired, gotStr, tt.ret.wantFired, tt.ret.wantStr)
 			}
 		})
 	}
@@ -58,26 +77,38 @@ func Test_seen(t *testing.T) {
 	type args struct {
 		m *discordgo.MessageCreate
 	}
+	type ret struct {
+		wantFired bool
+		wantStr   []string
+	}
 	tests := []struct {
 		name string
 		args args
 		want []string
+		ret  ret
 	}{
 		{
 			name: "basic - !seen foo",
 			args: args{m: message("someuser", "1111", "!seen bar")},
 			want: []string{"someuser#1111, I've never seen bar"},
+			ret: ret{
+				wantFired: true,
+				wantStr:   []string{"someuser#1111, I've never seen bar"},
+			},
 		},
 		{
 			name: "basic - !seen",
 			args: args{m: message("foo", "1111", "!seen")},
-			want: []string{"NOBODY"},
+			ret: ret{
+				wantFired: true,
+				wantStr:   []string{"NOBODY"},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := seenResp(tt.args.m); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("seen() = %v, want %v", got, tt.want)
+			if gotFired, gotStr := seenResp(tt.args.m); !reflect.DeepEqual(gotStr, tt.ret.wantStr) || gotFired != tt.ret.wantFired {
+				t.Errorf("seen() = %v, %v; want %v, %v", gotFired, gotStr, tt.ret.wantFired, tt.ret.wantStr)
 			}
 		})
 	}

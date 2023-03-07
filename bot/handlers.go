@@ -77,7 +77,11 @@ func Seen(s *discordgo.Session, m *discordgo.MessageCreate) {
 		responder = seenResp
 	}
 
-	responses := responder(m)
+	fired, responses := responder(m)
+	if !fired {
+		return
+	}
+
 	for _, resp := range responses {
 		m, err := s.ChannelMessageSend(m.ChannelID, resp)
 		if err != nil {
@@ -87,20 +91,23 @@ func Seen(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func pong(m *discordgo.MessageCreate) []string {
+func pong(m *discordgo.MessageCreate) (bool, []string) {
 	var out string
+	fired := false
 	if m.Content == "!ping" {
 		out = "PONG"
+		fired = true
 	} else if m.Content == "!pong" {
 		out = "PING"
+		fired = true
 	}
-	return []string{out}
+	return fired, []string{out}
 }
 
-func seenResp(m *discordgo.MessageCreate) []string {
+func seenResp(m *discordgo.MessageCreate) (bool, []string) {
 	lines := []string{}
 	if !strings.HasPrefix(m.Content, "!seen") {
-		return lines
+		return false, lines
 	}
 
 	currentState.mx.Lock()
@@ -108,6 +115,7 @@ func seenResp(m *discordgo.MessageCreate) []string {
 
 	fields := strings.Fields(m.Content)
 	var response string
+	fired := false
 	if len(fields) == 1 {
 		response = currentState.seen.String()
 	} else if len(fields) == 2 {
@@ -120,7 +128,8 @@ func seenResp(m *discordgo.MessageCreate) []string {
 	}
 
 	if response != "" {
+		fired = true
 		lines = append(lines, response)
 	}
-	return lines
+	return fired, lines
 }

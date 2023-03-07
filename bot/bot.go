@@ -15,7 +15,7 @@ type SessionHandler func(*discordgo.Session, *discordgo.MessageCreate)
 type ReadyHandler func(*discordgo.Session, *discordgo.Ready)
 
 type MessageHandler func(*discordgo.MessageCreate)
-type MessageResponder func(*discordgo.MessageCreate) []string
+type MessageResponder func(*discordgo.MessageCreate) (bool, []string)
 
 // DiscordBot is a glorified container for a discordgo Session.
 type Message struct {
