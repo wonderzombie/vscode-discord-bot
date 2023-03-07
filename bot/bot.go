@@ -14,6 +14,8 @@ import (
 type MessageCreateResponder func(*discordgo.MessageCreate) (bool, []string)
 type MessageResponder func(*Message) (bool, []string)
 
+///// MESSAGE HANDLING /////
+
 type Message struct {
 	Author    string
 	ChannelID string
@@ -44,24 +46,35 @@ type Response struct {
 	Final  bool
 }
 
+///// MODULES /////
+
 type Handler interface {
 	Handle(m *discordgo.MessageCreate) Response
 }
 
-type BotModule struct {
+type Module struct {
+	Id        string
 	responder MessageResponder
 }
 
-func (m *BotModule) Handle(msg *Message) Response {
-	fired, out := m.responder(msg)
-	return Response{fired, out, false}
+func NewModule(id string, mr MessageResponder) *Module {
+	return &Module{
+		Id:        id,
+		responder: mr,
+	}
 }
+
+func (m *Module) Handle(msg *Message) (bool, []string) {
+	return m.responder(msg)
+}
+
+////// BOT FUNCTIONALITY /////
 
 // DiscordBot is a glorified container for a discordgo Session.
 type DiscordBot struct {
 	s    *discordgo.Session
 	User *discordgo.User
-	mods []*BotModule
+	mods []*Module
 	sent []*discordgo.Message
 }
 
@@ -91,20 +104,13 @@ func (b *DiscordBot) main(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	var out []string
 	msg := NewMessage(m)
 	for _, module := range b.mods {
-		resp := module.Handle(msg)
-		if resp.HasOut {
-			out = resp.Out
+		if fired, resp := module.Handle(msg); fired {
+			for _, o := range resp {
+				b.sendMessage(m.ChannelID, o)
+			}
 		}
-		if resp.Final {
-			break
-		}
-	}
-
-	for _, o := range out {
-		b.sendMessage(m.ChannelID, o)
 	}
 }
 

@@ -2,12 +2,10 @@ package seen
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/wonderzombie/godiscbot/bot"
 )
 
@@ -26,73 +24,43 @@ func (st seenTimes) String() string {
 }
 
 type seenState struct {
-	// user *discordgo.User
 	seen seenTimes
 	mx   sync.Mutex
-	sent []*discordgo.Message
 }
 
-func newSeen() *seenState {
-	return &seenState{
-		seen: make(seenTimes),
-		mx:   sync.Mutex{},
-		sent: []*discordgo.Message{},
-		// user: s.State.User,
-	}
+type SeenModule struct {
+	state *seenState
 }
 
-func (ss *seenState) addSent(out *discordgo.Message) {
-	ss.sent = append(ss.sent, out)
+func NewSeenModule(ss *seenState) *bot.Module {
+	sm := &SeenModule{ss}
+
+	return bot.NewModule("seen",
+		func(m *bot.Message) (bool, []string) {
+			return sm.handleSeen(m)
+		})
 }
 
-var currentState *seenState
+type SeenResponder func(ss *seenState, m *bot.Message) (bool, []string)
 
-func initSeen() {
-	currentState = newSeen()
-}
-
-// initOnce is an experiment. init() is called before main, but in tests, there's no main per se. To ensure that
-// there's no double-calls to initSeen, both this and tests use initOnce.
-var initOnce sync.Once
-
-func init() {
-	initOnce.Do(initSeen)
-}
-
-// Seen generates and sends a response using currentState, a SeenState type.
-func Seen(s *discordgo.Session, m *discordgo.MessageCreate) {
-	initOnce.Do(initSeen)
-
-	var responder bot.MessageResponder
-
-	fields := strings.Fields(m.Content)
-	if bot.Empty(fields) {
-		return
+func (sm *SeenModule) handleSeen(m *bot.Message) (bool, []string) {
+	cmd, ok := m.Cmd()
+	if !ok {
+		return false, []string{}
 	}
 
-	// experimenting with this pattern
-	switch cmd := fields[0]; cmd {
-	case "!ping":
+	var responder SeenResponder
+	switch cmd {
+	case "ping", "!ping":
 		responder = pong
-	case "!seen":
+	case "seen", "!seen":
 		responder = seenResp
 	}
 
-	fired, responses := responder(bot.NewMessage(m))
-	if !fired {
-		return
-	}
-
-	for _, resp := range responses {
-		m, err := s.ChannelMessageSend(m.ChannelID, resp)
-		if err != nil {
-			log.Printf("WARNING: unable to send: %v\nMessage content: %v\n", err, resp)
-		}
-		currentState.addSent(m)
-	}
+	return responder(sm.state, m)
 }
 
-func pong(m *bot.Message) (bool, []string) {
+func pong(ss *seenState, m *bot.Message) (bool, []string) {
 	var out string
 	fired := false
 	if m.Content == "!ping" {
@@ -105,24 +73,24 @@ func pong(m *bot.Message) (bool, []string) {
 	return fired, []string{out}
 }
 
-func seenResp(m *bot.Message) (bool, []string) {
+func seenResp(ss *seenState, m *bot.Message) (bool, []string) {
 	lines := []string{}
 	if !strings.HasPrefix(m.Content, "!seen") {
 		return false, lines
 	}
 
-	currentState.mx.Lock()
-	defer currentState.mx.Unlock()
+	ss.mx.Lock()
+	defer ss.mx.Unlock()
 
 	fields := strings.Fields(m.Content)
 	var response string
 	fired := false
 	if len(fields) == 1 {
-		response = currentState.seen.String()
+		response = ss.seen.String()
 	} else if len(fields) == 2 {
 		username := fields[1]
-		if t, ok := currentState.seen[username]; ok {
-			response = fmt.Sprintf("%s, I saw %s and it was %v", m.Author, username, t)
+		if t, ok := ss.seen[username]; ok {
+			response = fmt.Sprintf("%s, last time I saw %s it was %v", m.Author, username, t)
 		} else {
 			response = fmt.Sprintf("%s, I've never seen %s", m.Author, username)
 		}
