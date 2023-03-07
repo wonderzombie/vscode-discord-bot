@@ -32,35 +32,42 @@ type SeenModule struct {
 	state *seenState
 }
 
-func NewSeenModule(ss *seenState) *bot.Module {
-	sm := &SeenModule{ss}
-
-	return bot.NewModule("seen",
-		func(m *bot.Message) (bool, []string) {
-			return sm.handleSeen(m)
-		})
+type seenUser struct {
+	username string
+	t        time.Time
 }
 
-type SeenResponder func(ss *seenState, m *bot.Message) (bool, []string)
+func New(users ...seenUser) bot.Responder {
+	sm := &SeenModule{
+		state: &seenState{
+			seen: make(seenTimes, len(users)),
+			mx:   sync.Mutex{},
+		},
+	}
+	for _, u := range users {
+		sm.state.seen[u.username] = u.t
+	}
+	return sm.Handle
+}
 
-func (sm *SeenModule) handleSeen(m *bot.Message) (bool, []string) {
+func (sm *SeenModule) Handle(m *bot.Message) (bool, []string) {
 	cmd, ok := m.Cmd()
 	if !ok {
 		return false, []string{}
 	}
 
-	var responder SeenResponder
+	var responder bot.Responder
 	switch cmd {
 	case "ping", "!ping":
-		responder = pong
+		responder = sm.pong
 	case "seen", "!seen":
-		responder = seenResp
+		responder = sm.seenResp
 	}
 
-	return responder(sm.state, m)
+	return responder(m)
 }
 
-func pong(ss *seenState, m *bot.Message) (bool, []string) {
+func (sm *SeenModule) pong(m *bot.Message) (bool, []string) {
 	var out string
 	fired := false
 	if m.Content == "!ping" {
@@ -73,23 +80,23 @@ func pong(ss *seenState, m *bot.Message) (bool, []string) {
 	return fired, []string{out}
 }
 
-func seenResp(ss *seenState, m *bot.Message) (bool, []string) {
+func (sm *SeenModule) seenResp(m *bot.Message) (bool, []string) {
 	lines := []string{}
 	if !strings.HasPrefix(m.Content, "!seen") {
 		return false, lines
 	}
 
-	ss.mx.Lock()
-	defer ss.mx.Unlock()
+	sm.state.mx.Lock()
+	defer sm.state.mx.Unlock()
 
 	fields := strings.Fields(m.Content)
 	var response string
 	fired := false
 	if len(fields) == 1 {
-		response = ss.seen.String()
+		response = sm.state.seen.String()
 	} else if len(fields) == 2 {
 		username := fields[1]
-		if t, ok := ss.seen[username]; ok {
+		if t, ok := sm.state.seen[username]; ok {
 			response = fmt.Sprintf("%s, last time I saw %s it was %v", m.Author, username, t)
 		} else {
 			response = fmt.Sprintf("%s, I've never seen %s", m.Author, username)

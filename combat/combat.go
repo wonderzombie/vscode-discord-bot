@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"strings"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/wonderzombie/godiscbot/bot"
 )
 
 const (
@@ -68,36 +68,25 @@ func (cm *combatMap) init(k string) *combatant {
 	return cm.m[k]
 }
 
-var (
-	tracker *combatMap = newCombatMap(defaultHp, randInt)
-	sent    []*discordgo.Message
-)
+func New() bot.Responder {
+	tracker := newCombatMap(defaultHp, randInt)
+	return tracker.Responder
+}
 
-func Handler(s *discordgo.Session, m *discordgo.MessageCreate) {
+func (cm *combatMap) Responder(m *bot.Message) (fired bool, out []string) {
 	msgParts := strings.Fields(m.Content)
 	if len(msgParts) < 2 {
 		return
 	}
 
 	action, targetName := msgParts[0], msgParts[1]
-	target := tracker.alwaysGet(targetName)
-	out := tracker.resolve(action, m.Author.Username, target)
-
-	if len(out) == 0 {
-		return
+	target := cm.alwaysGet(targetName)
+	out = cm.resolve(action, m.Author, target)
+	if len(out) > 0 {
+		fired = true
 	}
 
-	for _, msg := range out {
-		if !strings.HasSuffix(msg, "\n") {
-			msg = msg + "\n"
-		}
-		cms, err := s.ChannelMessageSend(m.ChannelID, msg)
-		if err != nil {
-			fmt.Printf("failed to send message: %v\nMessage follows:\n%s", err, msg)
-			continue
-		}
-		sent = append(sent, cms)
-	}
+	return fired, out
 }
 
 // https://go.dev/play/p/3R5wtH9yOMo

@@ -35,29 +35,5 @@ func NewMessage(m *discordgo.MessageCreate) *Message {
 	}
 }
 
-type Response struct {
-	HasOut bool
-	Out    []string
-}
-
-///// MODULES /////
-
-type Handler interface {
-	Handle(m *discordgo.MessageCreate) Response
-}
-
-type Module struct {
-	Id        string
-	responder MessageResponder
-}
-
-func NewModule(id string, mr MessageResponder) *Module {
-	return &Module{
-		Id:        id,
-		responder: mr,
-	}
-}
-
-func (m *Module) Handle(msg *Message) (bool, []string) {
-	return m.responder(msg)
-}
+type Processor func(m *Message) bool
+type Responder func(m *Message) (bool, []string)

@@ -14,20 +14,22 @@ import (
 
 // DiscordBot is a glorified container for a discordgo Session.
 type DiscordBot struct {
-	s    *discordgo.Session
-	User *discordgo.User
-	mods []*Module
-	sent []*discordgo.Message
+	s          *discordgo.Session
+	User       *discordgo.User
+	responders []Responder
+	sent       []*discordgo.Message
 }
 
-func New(s *discordgo.Session, modules ...Handler) *DiscordBot {
+func New(s *discordgo.Session, responders ...Responder) *DiscordBot {
 	b := &DiscordBot{
-		s:    s,
-		User: s.State.User,
+		s:          s,
+		User:       s.State.User,
+		responders: responders,
 	}
 
 	s.AddHandlerOnce(Ready)
-	s.AddHandler(b.main)
+	// messageCreated will invoke module handlers accordingly.
+	s.AddHandler(b.messageCreated)
 
 	return b
 }
@@ -41,14 +43,13 @@ func (b *DiscordBot) Run() {
 	fmt.Println("quitting")
 }
 
-func (b *DiscordBot) main(s *discordgo.Session, m *discordgo.MessageCreate) {
+func (b *DiscordBot) messageCreated(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if s.State.User.String() == m.Author.String() {
 		return
 	}
 
-	msg := NewMessage(m)
-	for _, module := range b.mods {
-		if fired, resp := module.Handle(msg); fired {
+	for _, h := range b.responders {
+		if fired, resp := h(NewMessage(m)); fired && !Empty(resp) {
 			for _, o := range resp {
 				b.sendMessage(m.ChannelID, o)
 			}
