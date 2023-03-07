@@ -117,7 +117,7 @@ func Test_seen(t *testing.T) {
 		ret  ret
 	}{
 		{
-			name: "basic - !seen foo",
+			name: "never seen bar",
 			args: args{
 				m:  message("someuser", "1111", "!seen bar"),
 				ss: initSeen(seenUser{name: "baz", t: time.Unix(1, 0)})},
@@ -128,7 +128,7 @@ func Test_seen(t *testing.T) {
 			},
 		},
 		{
-			name: "basic - !seen",
+			name: "nobody seen",
 			args: args{
 				m:  message("foo", "1111", "!seen"),
 				ss: initSeen()},
@@ -138,7 +138,7 @@ func Test_seen(t *testing.T) {
 			},
 		},
 		{
-			name: "basic - !seen someone",
+			name: "someone seen",
 			args: args{
 				m:  message("foo", "1111", "!seen bar"),
 				ss: initSeen(seenUser{name: "bar", t: time.Unix(1, 0)}),
