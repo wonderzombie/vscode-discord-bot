@@ -1,4 +1,4 @@
-package bot
+package seen
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/wonderzombie/godiscbot/bot"
 )
 
 type seenTimes map[string]time.Time
@@ -62,10 +63,10 @@ func init() {
 func Seen(s *discordgo.Session, m *discordgo.MessageCreate) {
 	initOnce.Do(initSeen)
 
-	var responder MessageResponder
+	var responder bot.MessageResponder
 
 	fields := strings.Fields(m.Content)
-	if empty(fields) {
+	if bot.Empty(fields) {
 		return
 	}
 

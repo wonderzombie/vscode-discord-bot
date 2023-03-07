@@ -120,13 +120,3 @@ func (b *DiscordBot) sendMessage(channelID string, o string) {
 func Ready(s *discordgo.Session, m *discordgo.Ready) {
 	log.Printf("ready: using name %s", s.State.User.Username)
 }
-
-func empty(lines []string) bool {
-	ret := false
-	if len(lines) == 0 {
-		ret = true
-	} else if l := len(lines); l == 1 && lines[0] == "" {
-		ret = true
-	}
-	return ret
-}
