@@ -78,7 +78,7 @@ func Seen(s *discordgo.Session, m *discordgo.MessageCreate) {
 		responder = seenResp
 	}
 
-	fired, responses := responder(m)
+	fired, responses := responder(bot.NewMessage(m))
 	if !fired {
 		return
 	}
@@ -92,7 +92,7 @@ func Seen(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func pong(m *discordgo.MessageCreate) (bool, []string) {
+func pong(m *bot.Message) (bool, []string) {
 	var out string
 	fired := false
 	if m.Content == "!ping" {
@@ -105,7 +105,7 @@ func pong(m *discordgo.MessageCreate) (bool, []string) {
 	return fired, []string{out}
 }
 
-func seenResp(m *discordgo.MessageCreate) (bool, []string) {
+func seenResp(m *bot.Message) (bool, []string) {
 	lines := []string{}
 	if !strings.HasPrefix(m.Content, "!seen") {
 		return false, lines

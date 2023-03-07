@@ -5,14 +5,19 @@ import (
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/wonderzombie/godiscbot/bot"
 )
 
-func message(username string, discriminator string, content string) *discordgo.MessageCreate {
+func messageCreate(username string, discriminator string, content string) *discordgo.MessageCreate {
 	return &discordgo.MessageCreate{
 		Message: &discordgo.Message{
 			Author:  user(username, discriminator),
 			Content: content,
 		}}
+}
+
+func message(username string, discriminator string, content string) *bot.Message {
+	return bot.NewMessage(messageCreate(username, discriminator, content))
 }
 
 func user(username string, disc string) *discordgo.User {
@@ -24,7 +29,7 @@ func user(username string, disc string) *discordgo.User {
 
 func Test_pong(t *testing.T) {
 	type args struct {
-		m *discordgo.MessageCreate
+		m *bot.Message
 	}
 	type ret struct {
 		wantStr   []string
@@ -75,7 +80,7 @@ func Test_seen(t *testing.T) {
 	initOnce.Do(initSeen)
 
 	type args struct {
-		m *discordgo.MessageCreate
+		m *bot.Message
 	}
 	type ret struct {
 		wantFired bool

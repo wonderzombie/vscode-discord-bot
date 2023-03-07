@@ -11,13 +11,9 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-type SessionHandler func(*discordgo.Session, *discordgo.MessageCreate)
-type ReadyHandler func(*discordgo.Session, *discordgo.Ready)
+type MessageCreateResponder func(*discordgo.MessageCreate) (bool, []string)
+type MessageResponder func(*Message) (bool, []string)
 
-type MessageHandler func(*discordgo.MessageCreate)
-type MessageResponder func(*discordgo.MessageCreate) (bool, []string)
-
-// DiscordBot is a glorified container for a discordgo Session.
 type Message struct {
 	Author    string
 	ChannelID string
@@ -49,15 +45,19 @@ type Response struct {
 }
 
 type Handler interface {
-	Handle(m *Message) Response
+	Handle(m *discordgo.MessageCreate) Response
 }
 
-type BotModule struct{}
+type BotModule struct {
+	responder MessageResponder
+}
 
 func (m *BotModule) Handle(msg *Message) Response {
-	return Response{false, []string{}, false}
+	fired, out := m.responder(msg)
+	return Response{fired, out, false}
 }
 
+// DiscordBot is a glorified container for a discordgo Session.
 type DiscordBot struct {
 	s    *discordgo.Session
 	User *discordgo.User
