@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
@@ -31,6 +32,8 @@ func main() {
 		combat.New(),
 		seen.New(),
 	).Run()
+
+	os.Exit(0)
 }
 
 func start(tok string) *discordgo.Session {

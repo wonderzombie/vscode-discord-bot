@@ -50,7 +50,10 @@ func New(users ...seenUser) bot.Responder {
 	return sm.Handle
 }
 
-func (sm *SeenModule) Handle(m *bot.Message) (bool, []string) {
+func (sm *SeenModule) Handle(m *bot.Message) (fired bool, lines []string) {
+	who, when := m.Author, time.Now()
+	sm.state.seen[who] = when
+
 	cmd, ok := m.Cmd()
 	if !ok {
 		return false, []string{}
@@ -67,9 +70,9 @@ func (sm *SeenModule) Handle(m *bot.Message) (bool, []string) {
 	return responder(m)
 }
 
-func (sm *SeenModule) pong(m *bot.Message) (bool, []string) {
+func (sm *SeenModule) pong(m *bot.Message) (fired bool, lines []string) {
 	var out string
-	fired := false
+	fired = false
 	if m.Content == "!ping" {
 		out = "PONG"
 		fired = true
@@ -80,18 +83,14 @@ func (sm *SeenModule) pong(m *bot.Message) (bool, []string) {
 	return fired, []string{out}
 }
 
-func (sm *SeenModule) seenResp(m *bot.Message) (bool, []string) {
-	lines := []string{}
-	if !strings.HasPrefix(m.Content, "!seen") {
-		return false, lines
-	}
-
+func (sm *SeenModule) seenResp(m *bot.Message) (fired bool, lines []string) {
 	sm.state.mx.Lock()
 	defer sm.state.mx.Unlock()
 
-	fields := strings.Fields(m.Content)
-	var response string
-	fired := false
+	var (
+		response string
+		fields   []string = m.Fields()
+	)
 	if len(fields) == 1 {
 		response = sm.state.seen.String()
 	} else if len(fields) == 2 {

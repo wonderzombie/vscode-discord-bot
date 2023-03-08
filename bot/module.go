@@ -18,6 +18,10 @@ type Message struct {
 	fields    []string
 }
 
+func (m *Message) Fields() []string {
+	return m.fields
+}
+
 func (m *Message) Cmd() (string, bool) {
 	if f := m.fields[0]; strings.HasPrefix(f, "!") {
 		return f, true
@@ -25,14 +29,18 @@ func (m *Message) Cmd() (string, bool) {
 	return "", false
 }
 
+func (m *Message) Args() ([]string, bool) {
+	if len(m.fields) > 1 {
+		out := m.fields[1:len(m.fields)]
+		return out, true
+	}
+	return []string{""}, false
+}
+
 func NewMessage(m *discordgo.MessageCreate) *Message {
 	fields := strings.Fields(m.Content)
-	return &Message{
-		Author:    m.Author.String(),
-		ChannelID: m.ChannelID,
-		Content:   m.Content,
-		fields:    fields,
-	}
+	return &Message{m.Author.String(), m.ChannelID, m.Content, fields}
+
 }
 
 type Processor func(m *Message) bool

@@ -123,16 +123,6 @@ func Test_seen(t *testing.T) {
 			},
 		},
 		{
-			name: "nobody seen",
-			args: args{
-				r: New(),
-				m: message("foo", "1111", "!seen")},
-			ret: ret{
-				wantFired: true,
-				wantStr:   []string{"NOBODY"},
-			},
-		},
-		{
 			name: "someone seen",
 			args: args{
 				m: message("foo", "1111", "!seen bar"),
