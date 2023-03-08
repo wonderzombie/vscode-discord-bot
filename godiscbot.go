@@ -2,10 +2,13 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
 	"github.com/wonderzombie/godiscbot/bot"
+	"github.com/wonderzombie/godiscbot/combat"
+	"github.com/wonderzombie/godiscbot/seen"
 )
 
 var (
@@ -25,7 +28,12 @@ func main() {
 	session := start(tok)
 	defer session.Close()
 
-	bot.New(session).Run()
+	bot.New(session,
+		combat.New(),
+		seen.New(),
+	).Run()
+
+	os.Exit(0)
 }
 
 func start(tok string) *discordgo.Session {
