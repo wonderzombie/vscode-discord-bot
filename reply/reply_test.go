@@ -10,7 +10,8 @@ import (
 func Test_replyMod_Responder(t *testing.T) {
 	helloWorld := []string{"hello world"}
 	type fields struct {
-		nick string
+		nick    string
+		phrases []string
 	}
 	type args struct {
 		m *bot.Message
@@ -24,7 +25,7 @@ func Test_replyMod_Responder(t *testing.T) {
 	}{
 		{
 			"mentioned",
-			fields{"foobot"},
+			fields{"foobot", helloWorld},
 			args{
 				&bot.Message{Content: "hello foobot"},
 			},
@@ -33,26 +34,35 @@ func Test_replyMod_Responder(t *testing.T) {
 		},
 		{
 			"not mentioned",
-			fields{"foobot"},
+			fields{"foobot", helloWorld},
 			args{
 				&bot.Message{Content: "hello barbot"},
 			},
 			false,
 			nil,
 		},
+		{
+			"reply has nick",
+			fields{"foobot", []string{"hello {{.Nick}}!"}},
+			args{
+				&bot.Message{Content: "what's up foobot"},
+			},
+			true,
+			[]string{"i am foobot!"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rm := &replyMod{
 				nick:    tt.fields.nick,
-				phrases: helloWorld,
+				phrases: tt.fields.phrases,
 			}
 			gotFired, gotOut := rm.Responder(tt.args.m)
 			if gotFired != tt.wantFired {
-				t.Errorf("replyMod.Responder() got = %v, want %v", gotFired, tt.wantFired)
+				t.Errorf("replyMod.Responder() gotFired = %v, want %v", gotFired, tt.wantFired)
 			}
 			if !reflect.DeepEqual(gotOut, tt.wantOut) {
-				t.Errorf("replyMod.Responder() got1 = %v, want %v", gotOut, tt.wantOut)
+				t.Errorf("replyMod.Responder() gotOut = %v, want %v", gotOut, tt.wantOut)
 			}
 		})
 	}
