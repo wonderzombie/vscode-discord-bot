@@ -167,3 +167,43 @@ func Test_newest(t *testing.T) {
 		})
 	}
 }
+
+func Test_substr(t *testing.T) {
+	type args struct {
+		phrase    string
+		substring string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			"lowercase, substr",
+			args{"hello world", "world"},
+			true,
+		},
+		{
+			"mixed case, substr",
+			args{"hElLo WoRlD", "world"},
+			true,
+		},
+		{
+			"lowercase, not substr",
+			args{"hello world", "erroneous"},
+			false,
+		},
+		{
+			"mixed cased, not substr",
+			args{"hElLo WoRlD", "erroneous"},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := substr(tt.args.phrase, tt.args.substring); got != tt.want {
+				t.Errorf("substr() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
