@@ -16,18 +16,15 @@ func Responder(botUser *discordgo.User) bot.Responder {
 }
 
 type replyMod struct {
-	uniqueName string
-	nick       string
-
-	phrases []string
-}
-
-var defaultPhrases = []string{
-	"who said that",
-	"where is {{.Nick}}, where is {{.Nick}}",
+	nick, uniqueName string
+	phrases          []string
 }
 
 func (rm *replyMod) Responder(m *bot.Message) (bool, []string) {
+	if m == nil {
+		return false, nil
+	}
+
 	lowered := strings.ToLower(m.Content)
 	nick := strings.ToLower(rm.nick)
 	if !strings.Contains(lowered, nick) {
@@ -39,20 +36,36 @@ func (rm *replyMod) Responder(m *bot.Message) (bool, []string) {
 	roll := rand.Int() % len(rm.phrases)
 	out := rm.phrases[roll]
 
-	return rm.renderReply(out)
+	return rm.renderReply(out, m)
 }
 
-func (rm *replyMod) renderReply(out string) (bool, []string) {
-	tmpl, err := template.New("reply").Parse(out)
+type tmplArgs struct {
+	Phrase string // the phrase (reply) which has been chosen
+	Nick   string // the nickname of the bot user
+	Author string // author of the message sans discriminator
+}
+
+var defaultPhrases = []string{
+	// TODO: consider an exercise to add real mentions using a sub-template.
+	"who said that? was it you, {{.Author}}?",
+	"where is {{.Nick}}, where is {{.Nick}}",
+}
+
+func (rm *replyMod) renderReply(rawPhrase string, m *bot.Message) (bool, []string) {
+	if m == nil || rawPhrase == "" {
+		return false, nil
+	}
+
+	tmpl, err := template.New("reply").Parse(rawPhrase)
 	if err != nil {
-		fmt.Println("error loading template", tmpl.Name(), ":", err)
+		fmt.Println("error loading template:", err)
 		return false, nil
 	}
 
 	buf := &strings.Builder{}
-	err = tmpl.Execute(buf, struct{ Nick string }{rm.nick})
+	err = tmpl.Execute(buf, tmplArgs{rawPhrase, rm.nick, m.Author})
 	if err != nil {
-		fmt.Println("failed to execute template", tmpl.Name(), ":", err)
+		fmt.Println("failed to execute template:", err)
 		return false, nil
 	}
 	return true, []string{buf.String()}

@@ -43,12 +43,21 @@ func Test_replyMod_Responder(t *testing.T) {
 		},
 		{
 			"reply has nick",
-			fields{"foobot", []string{"hello {{.Nick}}!"}},
+			fields{"foobot", []string{"i am {{.Nick}}!"}},
 			args{
 				&bot.Message{Content: "what's up foobot"},
 			},
 			true,
 			[]string{"i am foobot!"},
+		},
+		{
+			"reply has user's nick",
+			fields{"foobot", []string{"hello {{.Author}}"}},
+			args{
+				&bot.Message{Content: "what's up foobot", Author: "someuser"},
+			},
+			true,
+			[]string{"hello someuser"},
 		},
 	}
 	for _, tt := range tests {
