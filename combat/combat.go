@@ -12,8 +12,8 @@ const (
 	defaultHp = 10
 )
 
-func randInt(n int) int {
-	return rand.Int() % n
+func randInt(n size) int {
+	return rand.Int() % n.Int()
 }
 
 type combatant struct {
@@ -29,22 +29,33 @@ func (c *combatant) restore() {
 	c.hp = defaultHp
 }
 
-type combatMap struct {
-	m         map[string]*combatant
-	defaultHp int
-	roll      func(int) int
-	nRoll     func(int, int) int
+type quantity int
+type size int
+
+func (sz size) Int() int {
+	return int(sz)
 }
 
-func newCombatMap(defaultHp int, roller func(int) int) *combatMap {
-	return &combatMap{
+func (q quantity) Int() int {
+	return int(q)
+}
+
+type tracker struct {
+	m         map[string]*combatant
+	defaultHp int
+	roll      func(size) int
+	rollN     func(size, quantity) int
+}
+
+func newTracker(defaultHp int, roller func(size) int) *tracker {
+	return &tracker{
 		m:         make(map[string]*combatant),
 		defaultHp: defaultHp,
 		roll:      roller,
-		nRoll: func(q int, n int) int {
+		rollN: func(m size, q quantity) int {
 			t := 0
-			for i := 0; i < q; i++ {
-				t += roller(n)
+			for i := 0; i < q.Int(); i++ {
+				t += roller(m)
 			}
 			return t
 		},
@@ -52,7 +63,7 @@ func newCombatMap(defaultHp int, roller func(int) int) *combatMap {
 }
 
 // alwaysGet will get the combatant, creating a new entry for a combatant if needed.
-func (cm *combatMap) alwaysGet(k string) *combatant {
+func (cm *tracker) alwaysGet(k string) *combatant {
 	if out, ok := cm.m[k]; ok {
 		return out
 	}
@@ -60,7 +71,7 @@ func (cm *combatMap) alwaysGet(k string) *combatant {
 }
 
 // init resets the combatant's status by creating a new record and returns the same.
-func (cm *combatMap) init(k string) *combatant {
+func (cm *tracker) init(k string) *combatant {
 	cm.m[k] = &combatant{
 		name: k,
 		hp:   defaultHp,
@@ -68,12 +79,12 @@ func (cm *combatMap) init(k string) *combatant {
 	return cm.m[k]
 }
 
-func New() bot.Responder {
-	tracker := newCombatMap(defaultHp, randInt)
+func Responder() bot.Responder {
+	tracker := newTracker(defaultHp, randInt)
 	return tracker.Responder
 }
 
-func (cm *combatMap) Responder(m *bot.Message) (fired bool, out []string) {
+func (cm *tracker) Responder(m *bot.Message) (fired bool, out []string) {
 	msgParts := strings.Fields(m.Content)
 	if len(msgParts) < 2 {
 		return
@@ -90,34 +101,34 @@ func (cm *combatMap) Responder(m *bot.Message) (fired bool, out []string) {
 }
 
 // https://go.dev/play/p/3R5wtH9yOMo
-type resolver func(*combatMap, string, *combatant) []string
+type resolver func(*tracker, string, *combatant) []string
 
-func (cm *combatMap) resolve(action string, author string, target *combatant) []string {
-	var fn resolver = (*combatMap).resolveNoop
+func (cm *tracker) resolve(action string, author string, target *combatant) []string {
+	var fn resolver = (*tracker).resolveNoop
 
 	switch action := strings.Trim(action, "\n! "); action {
 	case "heal", "heals", "bless", "cure", "aid":
-		fn = (*combatMap).resolveHeal
+		fn = (*tracker).resolveHeal
 	case "res", "resurrect":
-		fn = (*combatMap).resolveRes
+		fn = (*tracker).resolveRes
 	case "attack", "hit", "stab", "bite", "curse":
-		fn = (*combatMap).resolveAttack
+		fn = (*tracker).resolveAttack
 	}
 
 	return fn(cm, author, target)
 }
 
-func (cm *combatMap) resolveNoop(unused1 string, unused2 *combatant) []string {
-	return []string{}
+func (cm *tracker) resolveNoop(unused1 string, unused2 *combatant) []string {
+	return nil
 }
 
-func (cm *combatMap) resolveHeal(author string, target *combatant) []string {
+func (cm *tracker) resolveHeal(author string, target *combatant) []string {
 	var outMsg string
 	switch {
 	case target.dead():
 		outMsg = fmt.Sprintf("%s is dead!", target.name)
 	case target.hp < defaultHp:
-		healed := cm.nRoll(2, 3)
+		healed := cm.rollN(2, 3)
 		target.hp += healed
 		outMsg = fmt.Sprintf("%s healed %s for %d hp!", author, target.name, healed)
 	default:
@@ -127,7 +138,7 @@ func (cm *combatMap) resolveHeal(author string, target *combatant) []string {
 	return []string{outMsg}
 }
 
-func (cm *combatMap) resolveRes(author string, target *combatant) []string {
+func (cm *tracker) resolveRes(author string, target *combatant) []string {
 	outMsg := fmt.Sprintf("%s is still alive!", target.name)
 	if target.dead() {
 		target.restore()
@@ -136,7 +147,7 @@ func (cm *combatMap) resolveRes(author string, target *combatant) []string {
 	return []string{outMsg}
 }
 
-func (cm *combatMap) resolveAttack(author string, target *combatant) (out []string) {
+func (cm *tracker) resolveAttack(author string, target *combatant) (out []string) {
 	// can't attack dead people
 	if target.dead() {
 		out = []string{fmt.Sprintf("%s is already dead!", target.name)}

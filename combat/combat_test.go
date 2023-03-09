@@ -52,7 +52,7 @@ func Test_combatMap_alwaysGet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cm := &combatMap{
+			cm := &tracker{
 				m: tt.m,
 			}
 			if got := cm.alwaysGet(tt.k); !reflect.DeepEqual(got, tt.want) {
@@ -90,7 +90,7 @@ func Test_combatMap_init(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cm := &combatMap{
+			cm := &tracker{
 				m: tt.m,
 			}
 			if got := cm.init(tt.k); !reflect.DeepEqual(got, tt.want) {
@@ -121,22 +121,22 @@ func Test_combatMap_resolveNoop(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cm := &combatMap{
+			cm := &tracker{
 				m: tt.fields.m,
 			}
 			if gotEmpty := cm.resolveNoop(tt.args.unused1, tt.args.unused2); len(gotEmpty) != 0 {
-				t.Errorf("combatMap.resolveNoop() = `%q`, want %q", gotEmpty, []string{})
+				t.Errorf("combatMap.resolveNoop() = %v, want %v", gotEmpty, nil)
 			}
 		})
 	}
 }
 
-func rollMax(n int) int {
-	return n
+func rollMax(n size) int {
+	return n.Int()
 }
 
-func nRollMax(q int, n int) int {
-	return n * q
+func rollNMax(n size, q quantity) int {
+	return n.Int() * q.Int()
 }
 
 func Test_combatMap_resolveAttack(t *testing.T) {
@@ -146,8 +146,8 @@ func Test_combatMap_resolveAttack(t *testing.T) {
 func Test_combatMap_resolveHeal(t *testing.T) {
 	type fields struct {
 		m     map[string]*combatant
-		roll  func(int) int
-		nRoll func(int, int) int
+		roll  func(size) int
+		rollN func(size, quantity) int
 	}
 	type args struct {
 		author string
@@ -161,29 +161,29 @@ func Test_combatMap_resolveHeal(t *testing.T) {
 	}{
 		{
 			"heal damage",
-			fields{fakeMap("hurted", defaultHp/2), rollMax, nRollMax},
+			fields{fakeMap("hurted", defaultHp/2), rollMax, rollNMax},
 			args{"authorperson", &combatant{"hurted", defaultHp / 2}},
 			[]string{"authorperson healed hurted for 6 hp!"},
 		},
 		{
 			"already full",
-			fields{fakeMap("fullhealth", defaultHp), rollMax, nRollMax},
+			fields{fakeMap("fullhealth", defaultHp), rollMax, rollNMax},
 			args{"authorperson", &combatant{"fullhealth", defaultHp}},
 			[]string{fmt.Sprintf("fullhealth already has %d hp!", defaultHp)},
 		},
 		{
 			"dead",
-			fields{fakeMap("deadguy", -defaultHp), rollMax, nRollMax},
+			fields{fakeMap("deadguy", -defaultHp), rollMax, rollNMax},
 			args{"authorperson", &combatant{"deadguy", -defaultHp}},
 			[]string{"deadguy is dead!"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cm := &combatMap{
+			cm := &tracker{
 				m:     tt.fields.m,
 				roll:  rollMax,
-				nRoll: nRollMax,
+				rollN: rollNMax,
 			}
 			if got := cm.resolveHeal(tt.args.author, tt.args.target); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("combatMap.resolveHeal() = %v, want %v", got, tt.want)
@@ -221,7 +221,7 @@ func Test_combatMap_resolveRes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cm := &combatMap{
+			cm := &tracker{
 				m:    tt.fields.m,
 				roll: rollMax,
 			}

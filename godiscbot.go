@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/wonderzombie/godiscbot/bot"
 	"github.com/wonderzombie/godiscbot/combat"
+	"github.com/wonderzombie/godiscbot/reply"
 	"github.com/wonderzombie/godiscbot/seen"
 )
 
@@ -29,8 +30,9 @@ func main() {
 	defer session.Close()
 
 	bot.New(session,
-		combat.New(),
-		seen.New(),
+		combat.Responder(),
+		seen.Responder(),
+		reply.Responder(session.State.User),
 	).Run()
 
 	os.Exit(0)

@@ -49,7 +49,7 @@ func (b *DiscordBot) messageCreated(s *discordgo.Session, m *discordgo.MessageCr
 	}
 
 	for _, h := range b.responders {
-		if fired, resp := h(NewMessage(m)); fired && !Empty(resp) {
+		if fired, resp := h(NewMessage(m)); fired && resp != nil {
 			for _, o := range resp {
 				b.sendMessage(m.ChannelID, o)
 			}

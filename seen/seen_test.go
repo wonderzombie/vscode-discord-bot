@@ -115,7 +115,7 @@ func Test_seen(t *testing.T) {
 		{
 			name: "never seen bar",
 			args: args{
-				r: New(seenUser{"not_bar", time.Unix(1, 0)}),
+				r: Responder(seenUser{"not_bar", time.Unix(1, 0)}),
 				m: message("someuser", "1111", "!seen bar")},
 			ret: ret{
 				wantFired: true,
@@ -126,7 +126,7 @@ func Test_seen(t *testing.T) {
 			name: "someone seen",
 			args: args{
 				m: message("foo", "1111", "!seen bar"),
-				r: New(seenUser{"bar", time.Unix(1, 0)}),
+				r: Responder(seenUser{"bar", time.Unix(1, 0)}),
 			},
 			ret: ret{
 				wantFired: true,

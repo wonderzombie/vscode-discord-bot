@@ -37,7 +37,7 @@ type seenUser struct {
 	t        time.Time
 }
 
-func New(users ...seenUser) bot.Responder {
+func Responder(users ...seenUser) bot.Responder {
 	sm := &SeenModule{
 		state: &seenState{
 			seen: make(seenTimes, len(users)),
@@ -56,7 +56,7 @@ func (sm *SeenModule) Handle(m *bot.Message) (fired bool, lines []string) {
 
 	cmd, ok := m.Cmd()
 	if !ok {
-		return false, []string{}
+		return false, nil
 	}
 
 	var responder bot.Responder
