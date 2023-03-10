@@ -100,22 +100,21 @@ func (cm *tracker) Responder(m *bot.Message) (fired bool, out []string) {
 	return fired, out
 }
 
-// https://go.dev/play/p/3R5wtH9yOMo
-type resolver func(*tracker, string, *combatant) []string
+type resolver func(string, *combatant) []string
 
 func (cm *tracker) resolve(action string, author string, target *combatant) []string {
-	var fn resolver = (*tracker).resolveNoop
+	var fn resolver = cm.resolveNoop
 
 	switch action := strings.Trim(action, "\n! "); action {
 	case "heal", "heals", "bless", "cure", "aid":
-		fn = (*tracker).resolveHeal
+		fn = cm.resolveHeal
 	case "res", "resurrect":
-		fn = (*tracker).resolveRes
+		fn = cm.resolveRes
 	case "attack", "hit", "stab", "bite", "curse":
-		fn = (*tracker).resolveAttack
+		fn = cm.resolveAttack
 	}
 
-	return fn(cm, author, target)
+	return fn(author, target)
 }
 
 func (cm *tracker) resolveNoop(unused1 string, unused2 *combatant) []string {

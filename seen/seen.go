@@ -23,13 +23,9 @@ func (st seenTimes) String() string {
 	return buf.String()
 }
 
-type seenState struct {
-	seen seenTimes
-	mx   sync.Mutex
-}
-
 type SeenModule struct {
-	state *seenState
+	seen   seenTimes
+	seenMx sync.Mutex
 }
 
 type seenUser struct {
@@ -39,20 +35,18 @@ type seenUser struct {
 
 func Responder(users ...seenUser) bot.Responder {
 	sm := &SeenModule{
-		state: &seenState{
-			seen: make(seenTimes, len(users)),
-			mx:   sync.Mutex{},
-		},
+		seen:   make(seenTimes, len(users)),
+		seenMx: sync.Mutex{},
 	}
 	for _, u := range users {
-		sm.state.seen[u.username] = u.t
+		sm.seen[u.username] = u.t
 	}
 	return sm.Handle
 }
 
 func (sm *SeenModule) Handle(m *bot.Message) (fired bool, lines []string) {
 	who, when := m.Author, time.Now()
-	sm.state.seen[who] = when
+	sm.seen[who] = when
 
 	cmd, ok := m.Cmd()
 	if !ok {
@@ -84,18 +78,18 @@ func (sm *SeenModule) pong(m *bot.Message) (fired bool, lines []string) {
 }
 
 func (sm *SeenModule) seenResp(m *bot.Message) (fired bool, lines []string) {
-	sm.state.mx.Lock()
-	defer sm.state.mx.Unlock()
+	sm.seenMx.Lock()
+	defer sm.seenMx.Unlock()
 
 	var (
 		response string
 		fields   []string = m.Fields()
 	)
 	if len(fields) == 1 {
-		response = sm.state.seen.String()
+		response = sm.seen.String()
 	} else if len(fields) == 2 {
 		username := fields[1]
-		if t, ok := sm.state.seen[username]; ok {
+		if t, ok := sm.seen[username]; ok {
 			response = fmt.Sprintf("%s, last time I saw %s it was %v", m.Author, username, t)
 		} else {
 			response = fmt.Sprintf("%s, I've never seen %s", m.Author, username)

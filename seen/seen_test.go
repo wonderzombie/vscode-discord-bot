@@ -26,8 +26,10 @@ func user(username string, disc string) *discordgo.User {
 }
 
 func Test_pong(t *testing.T) {
-	emptySeen := initSeen()
-	seenMod := SeenModule{emptySeen}
+	seenMod := SeenModule{
+		seen:   make(seenTimes),
+		seenMx: sync.Mutex{},
+	}
 
 	type args struct {
 		r bot.Responder
@@ -84,18 +86,6 @@ func Test_pong(t *testing.T) {
 			}
 		})
 	}
-}
-
-func initSeen(users ...seenUser) *seenState {
-	out := make(seenTimes, len(users))
-	for _, u := range users {
-		out[u.username] = u.t
-	}
-	return &seenState{
-		seen: out,
-		mx:   sync.Mutex{},
-	}
-
 }
 
 func Test_seen(t *testing.T) {

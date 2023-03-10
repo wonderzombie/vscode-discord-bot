@@ -6,10 +6,9 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-type MessageCreateResponder func(*discordgo.MessageCreate) (bool, []string)
-type MessageResponder func(*Message) (bool, []string)
-
 ///// MESSAGE HANDLING /////
+
+type Responder func(m *Message) (bool, []string)
 
 type Message struct {
 	Author    string
@@ -34,7 +33,7 @@ func (m *Message) Args() ([]string, bool) {
 		out := m.fields[1:len(m.fields)]
 		return out, true
 	}
-	return []string{""}, false
+	return nil, false
 }
 
 func NewMessage(m *discordgo.MessageCreate) *Message {
@@ -42,6 +41,3 @@ func NewMessage(m *discordgo.MessageCreate) *Message {
 	return &Message{m.Author.String(), m.ChannelID, m.Content, fields}
 
 }
-
-type Processor func(m *Message) bool
-type Responder func(m *Message) (bool, []string)
