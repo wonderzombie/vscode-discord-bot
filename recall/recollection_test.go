@@ -207,3 +207,46 @@ func Test_substr(t *testing.T) {
 		})
 	}
 }
+
+func Test_selectTopic(t *testing.T) {
+	type args struct {
+		memories []memory
+		topic    string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []memory
+	}{
+		// TODO: Add test cases.
+		{
+			"only choice matches",
+			args{
+				[]memory{
+					{"foobot, hello", time.Unix(1000, 0)},
+				},
+				"hello",
+			},
+			[]memory{
+				{"foobot, hello", time.Unix(1000, 0)},
+			},
+		},
+		{
+			"one of three matches",
+			args{
+				[]memory{
+					{"foobot, hello to the bees", time.Unix(1000, 0)},
+					{"foobot, I love bees", time.Unix(2000, 0)},
+				},
+				"bees"},
+			[]memory{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := selectTopic(tt.args.memories, tt.args.topic); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("selectTopic() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
