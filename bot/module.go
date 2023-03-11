@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"io"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -8,7 +9,21 @@ import (
 
 ///// MESSAGE HANDLING /////
 
-type Responder func(m *Message) (bool, []string)
+type Responder interface {
+	apply(io.StringWriter, *Message) bool
+}
+
+type responder func(*Message) (bool, []string)
+
+func (r responder) apply(w io.StringWriter, m *Message) bool {
+	fired, out := r(m)
+	if fired && out != nil {
+		for _, o := range out {
+			w.WriteString(o)
+		}
+	}
+	return fired
+}
 
 type Message struct {
 	Author    string
@@ -39,5 +54,4 @@ func (m *Message) Args() ([]string, bool) {
 func NewMessage(m *discordgo.MessageCreate) *Message {
 	fields := strings.Fields(m.Content)
 	return &Message{m.Author.String(), m.ChannelID, m.Content, fields}
-
 }

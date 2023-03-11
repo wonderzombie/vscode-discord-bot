@@ -2,6 +2,7 @@ package reply
 
 import (
 	"fmt"
+	"io"
 	"math/rand"
 	"strings"
 	"text/template"
@@ -15,9 +16,23 @@ func Responder(botUser *discordgo.User) bot.Responder {
 	return replyMod.Responder
 }
 
+func Responder2(botUser *discordgo.User) bot.Responder2 {
+	replyMod := newReplyMod(botUser)
+	return replyMod.Responder2
+}
+
 type replyMod struct {
 	nick, uniqueName string
 	phrases          []string
+}
+
+func (rm *replyMod) Responder2(w io.StringWriter, m *bot.Message) (fired bool) {
+	if fired, out := rm.Responder(m); fired {
+		for _, o := range out {
+			w.WriteString(o)
+		}
+	}
+	return fired
 }
 
 func (rm *replyMod) Responder(m *bot.Message) (bool, []string) {
