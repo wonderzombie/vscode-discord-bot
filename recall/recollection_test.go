@@ -30,34 +30,6 @@ func Test_choose(t *testing.T) {
 	}
 }
 
-func Test_recollection_remember(t *testing.T) {
-	type fields struct {
-		memories []memory
-	}
-	type args struct {
-		topic string
-		opt   memoryOpt
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   memory
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &recollection{
-				memories: tt.fields.memories,
-			}
-			if got := r.remember(tt.args.topic, tt.args.opt); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("recollection.remember() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_oldest(t *testing.T) {
 	type args struct {
 		topicMemories []memory
@@ -237,9 +209,12 @@ func Test_selectTopic(t *testing.T) {
 				[]memory{
 					{"foobot, hello to the bees", time.Unix(1000, 0)},
 					{"foobot, I love bees", time.Unix(2000, 0)},
+					{"foobot, I love BATHS", time.Unix(2000, 0)},
 				},
-				"bees"},
-			[]memory{},
+				"baths"},
+			[]memory{
+				{"foobot, I love BATHS", time.Unix(2000, 0)},
+			},
 		},
 	}
 	for _, tt := range tests {

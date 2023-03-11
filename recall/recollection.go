@@ -4,6 +4,8 @@ import (
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/wonderzombie/godiscbot/bot"
 )
 
 // a memory captures a message and when it was received.
@@ -17,15 +19,8 @@ type recollection struct {
 	memories []memory
 }
 
-type memoryOpt int
-
-const (
-	RANDOM memoryOpt = iota
-	OLDEST
-	NEWEST
-)
-
-func (r *recollection) remember(topic string, opt memoryOpt) memory {
+// remember retrieves a message related to a topic (ostensibly a word or phrase) from the recollection's memories.
+func (r *recollection) remember(topic string) (memory, bool) {
 	var topicMemories []memory
 
 	for _, m := range r.memories {
@@ -34,17 +29,15 @@ func (r *recollection) remember(topic string, opt memoryOpt) memory {
 		}
 	}
 
-	var fn func([]memory) memory
-	switch opt {
-	case RANDOM:
-		fn = choose
-	case OLDEST:
-		fn = oldest
-	case NEWEST:
-		fn = newest
+	if len(topicMemories) == 0 {
+		return memory{}, false
 	}
 
-	return fn(topicMemories)
+	return choose(topicMemories), true
+}
+
+func (r *recollection) add(m *bot.Message, t time.Time) {
+	r.memories = append(r.memories, memory{orig: m.Content, Time: t})
 }
 
 func choose(topicMemories []memory) memory {
