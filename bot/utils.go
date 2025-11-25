@@ -2,10 +2,7 @@ package bot
 
 func Empty(lines []string) bool {
 	ret := false
-	if len(lines) == 0 {
-		ret = true
-	} else if l := len(lines); l == 1 && lines[0] == "" {
-		ret = true
-	}
+	ret = ret || len(lines) == 0
+	ret = ret || (len(lines) == 1 && lines[0] == "")
 	return ret
 }
