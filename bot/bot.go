@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -21,6 +20,8 @@ type DiscordBot struct {
 }
 
 func New(s *discordgo.Session, responders ...Responder) *DiscordBot {
+	log.SetPrefix("[bot]")
+
 	b := &DiscordBot{
 		s:          s,
 		User:       s.State.User,
@@ -36,11 +37,11 @@ func New(s *discordgo.Session, responders ...Responder) *DiscordBot {
 
 // Run is meant to block the main thread while the discordgo API manages handlers.
 func (b *DiscordBot) Run() {
-	fmt.Println("running")
+	log.Println("running")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
-	fmt.Println("quitting")
+	log.Println("quitting")
 }
 
 func (b *DiscordBot) messageCreated(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -60,7 +61,7 @@ func (b *DiscordBot) messageCreated(s *discordgo.Session, m *discordgo.MessageCr
 func (b *DiscordBot) sendMessage(channelID string, o string) {
 	msg, err := b.s.ChannelMessageSend(channelID, o)
 	if err != nil {
-		fmt.Println("unable to send message:", err, "\nMessage follows: [", o, "]")
+		log.Println("unable to send message:", err, "\nMessage follows: [", o, "]")
 	} else {
 		b.sent = append(b.sent, msg)
 	}

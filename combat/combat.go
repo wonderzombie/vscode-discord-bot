@@ -2,6 +2,7 @@ package combat
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"strings"
 
@@ -69,6 +70,7 @@ func (cm *combatMap) init(k string) *combatant {
 }
 
 func New() bot.Responder {
+	log.SetPrefix("[com]")
 	tracker := newCombatMap(defaultHp, randInt)
 	return tracker.Responder
 }
@@ -104,7 +106,11 @@ func (cm *combatMap) resolve(action string, author string, target *combatant) []
 		fn = (*combatMap).resolveAttack
 	}
 
-	return fn(cm, author, target)
+	out := fn(cm, author, target)
+	if out != nil {
+		log.Println(out)
+	}
+	return out
 }
 
 func (cm *combatMap) resolveNoop(unused1 string, unused2 *combatant) []string {
